@@ -1,13 +1,14 @@
 
 #include "raylib.h"
+#include "iostream"
 
 int main() {
-    InitWindow(800, 450, "C++ IS FUN");
+    InitWindow(1080, 800, "MINESWEEPER");
 
     while(!WindowShouldClose()) {
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        DrawText("Hello world", 330, 200, 20, BLACK);
+        DrawText("Hello world", 130, 200, 100, BLACK);
         EndDrawing();
     }
     CloseWindow();
