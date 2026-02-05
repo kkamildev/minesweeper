@@ -18,7 +18,12 @@ add_executable(
 
 target_link_libraries(minesweeper raylib)
 
-file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
+add_custom_target(copy_assets ALL
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        ${CMAKE_CURRENT_BINARY_DIR}/assets
+)
+
 
 if(UNIX AND NOT APPLE)
     target_link_libraries(minesweeper m pthread dl rt X11)
