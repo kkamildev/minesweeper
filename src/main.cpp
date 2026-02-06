@@ -54,12 +54,15 @@ void PrepareFieldForGame(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool che
     }
 }
 
-void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedField[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], Vector2 primaryPosition, Vector2 selectedField) {
+void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], Vector2 primaryPosition, Vector2 selectedField) {
     for(int i = 0;i<MINEFIELD_HEIGHT;i++) {
         for(int j = 0;j<MINEFIELD_WIDTH;j++) {
             if((int)selectedField.x == j && (int)selectedField.y == i) {
                 DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, GRAY);
             }
+            if(checkedFields[i][j]) {
+                DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, LIGHTGRAY);
+            } 
             DrawRectangleLines(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, BLACK);
         }
     }
@@ -85,6 +88,27 @@ void PlantBombs(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], int bombs, Vector
     }
 }
 
+void CheckField(int x, int y, char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields[MINEFIELD_HEIGHT][MINEFIELD_WIDTH]) {
+    if(!checkedFields[y][x]) {
+        checkedFields[y][x] = true;
+        if(field[y][x] == 'B') {
+            checkedFields[y][x] = false;
+        } else if(field[y][x] == '0') {
+            for(int i = 0;i<3;i++) {
+                for(int j = 0;j<3;j++) {
+                    if(y + i - 1 < 0 || x + j - 1 < 0 || y + i - 1 >= MINEFIELD_HEIGHT || x + j - 1 >= MINEFIELD_WIDTH) {
+                        continue;
+                    }
+                    if(i == 1 && j == 1) {
+                        continue;
+                    }
+                    CheckField(x + j - 1, y + i - 1, field, checkedFields);
+                }
+            }
+        }
+    }
+}
+
 
 
 int main() {
@@ -102,6 +126,8 @@ int main() {
 
     int bombCount = BOMB_COUNT;
 
+    int x, y;
+
     PrepareFieldForGame(mineField, checkedFields);
     while(!WindowShouldClose()) {
 
@@ -115,10 +141,14 @@ int main() {
         }
         if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             if(selectedField.x > -1) {
+                x = (int)selectedField.x;
+                y = (int)selectedField.y;
                 if(!started) {
                     // setting all bombs
                     PlantBombs(mineField, bombCount, selectedField);
+                    started = true;
                 }
+                CheckField(x, y, mineField, checkedFields);
             }
         }
         BeginDrawing();
