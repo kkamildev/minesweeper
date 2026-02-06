@@ -17,35 +17,19 @@ const int BOMB_COUNT = 40;
 char mineField[MINEFIELD_HEIGHT][MINEFIELD_WIDTH];
 bool checkedFields[MINEFIELD_HEIGHT][MINEFIELD_WIDTH];
 
+
+// 1 - game in progress 2 - win 3 - game over
+int gameStatus;
+bool gameRunning = true;
+bool started;
+
+Rectangle exitButtonRect;
+Rectangle retryButtonRect;
 Font font;
 
-class Text {
-    private:
-        std::string content;
-        int contentWidth;
-    public:
-        Vector2 position;
-        int size;
-        int spacing = 2;
-        Color color = BLACK;
-        Text(std::string content, Vector2 position, int size) {
-            this->size = size;
-            this->position = position;
-            setContent(content);
-        }
-    void setContent(std::string content) {
-        this->content = content;
-        this->contentWidth = MeasureTextEx(font, content.c_str(), size, spacing).x;
-    }
-    void DrawPlain() {
-        DrawTextEx(font, content.c_str(), position, size, 2, color);
-    }
-    void DrawCentered() {
-        DrawTextEx(font, content.c_str(), (Vector2){position.x - contentWidth / 2, position.y}, size, 2, color);
-    }
-};
-
 void PrepareFieldForGame(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedField[MINEFIELD_HEIGHT][MINEFIELD_WIDTH]) {
+    started = false;
+    gameStatus = 1;
     for(int i = 0;i<MINEFIELD_HEIGHT;i++) {
         for(int j = 0;j<MINEFIELD_WIDTH;j++) {
             field[i][j] = '0';
@@ -62,29 +46,89 @@ void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields
             }
             if(checkedFields[i][j]) {
                 DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, LIGHTGRAY);
-            } 
+                if(field[i][j] >= '1' && field[i][j] != 'B') {
+                    std::string temp(1, field[i][j]);
+                    DrawTextEx(font, temp.c_str(), {CELL_SIZE * j + primaryPosition.x + 10, CELL_SIZE * i + primaryPosition.y}, 45, 2, BLACK);
+                }
+            }
+            if(gameStatus != 1 && field[i][j] == 'B') {
+                DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, RED);
+            }
             DrawRectangleLines(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, BLACK);
         }
     }
     DrawRectangleLinesEx((Rectangle){primaryPosition.x, primaryPosition.y, CELL_SIZE * MINEFIELD_WIDTH, CELL_SIZE * MINEFIELD_HEIGHT}, 4, BLACK);
 }
 
+void DrawGamePanel(Vector2 primaryPosition, Vector2 mousePosition) {
+    switch(gameStatus) {
+        case 1:
+            DrawTextEx(font, "GAME STATUS", primaryPosition, 60, 2, DARKGREEN);
+        break;
+        case 2:
+            DrawTextEx(font, "YOU WIN!", primaryPosition, 60, 2, GREEN);
+        break;
+        case 3:
+            DrawTextEx(font, "GAME OVER!", primaryPosition, 60, 2, RED);
+        break;
+    }
+    if(gameStatus != 1) {
+        exitButtonRect = {primaryPosition.x, primaryPosition.y + 140, 200, 50};
+        retryButtonRect = {primaryPosition.x, primaryPosition.y + 80, 200, 50};
+        // retry button
+        if(CheckCollisionPointRec(mousePosition, retryButtonRect)) {
+            DrawRectangle(retryButtonRect.x, retryButtonRect.y, retryButtonRect.width, retryButtonRect.height, LIGHTGRAY);
+            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                PrepareFieldForGame(mineField, checkedFields);
+            }
+        }
+        DrawRectangleLinesEx(retryButtonRect, 4, BLACK);
+        DrawTextEx(font, "RETRY", (Vector2){retryButtonRect.x + 60, retryButtonRect.y}, 50, 2, BLACK);
+        // exit button
+        if(CheckCollisionPointRec(mousePosition, exitButtonRect)) {
+            DrawRectangle(exitButtonRect.x, exitButtonRect.y, exitButtonRect.width, exitButtonRect.height, LIGHTGRAY);
+            if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+                gameRunning = false;
+            }
+        }
+        DrawRectangleLinesEx(exitButtonRect, 4, BLACK);
+        DrawTextEx(font, "EXIT", (Vector2){exitButtonRect.x + 70, exitButtonRect.y}, 50, 2, BLACK);
+    }
+}
+
+
 Vector2 GetField(Vector2 mousePosition, Vector2 primaryPosition) {
     return {(mousePosition.x - primaryPosition.x) / CELL_SIZE, (mousePosition.y - primaryPosition.y) / CELL_SIZE};
 }
 
-void PlantBombs(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], int bombs, Vector2 selectedField) {
+void PlantBombs(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], int selectedX, int selectedY) {
     srand(time(0));
-    Vector2 bombPosition;
+
+    int bombs = BOMB_COUNT;
+    int bombX;
+    int bombY;
     while(bombs > 0) {
-        bombPosition = {(float)(rand() % MINEFIELD_WIDTH), (float)(rand() % MINEFIELD_HEIGHT)};
-        if(selectedField.x == bombPosition.x && selectedField.y == bombPosition.y) {
+        bombX = (int)(rand() % MINEFIELD_WIDTH);
+        bombY = (int)(rand() % MINEFIELD_HEIGHT);
+        if(field[bombY][bombX] == 'B') {
             continue;
-        } else {
-            // place bomb
-            field[(int)bombPosition.y][(int)bombPosition.x] = 'B';
-            bombs--;
         }
+        if(std::abs(bombX - selectedX) < 3 && std::abs(bombY - selectedY) < 3) {
+            continue;
+        }
+        // place bomb
+        field[bombY][bombX] = 'B';
+        for(int i = 0;i<3;i++) {
+            for(int j = 0;j<3;j++) {
+                if(bombY + i - 1 < 0 || bombX + j - 1 < 0 || bombY + i - 1 >= MINEFIELD_HEIGHT || bombX + j - 1 >= MINEFIELD_WIDTH) {
+                    continue;
+                }
+                if(field[bombY + i - 1][bombX + j - 1] != 'B') {
+                    field[bombY + i - 1][bombX + j - 1] += 1;
+                }
+            }
+        }
+        bombs--;
     }
 }
 
@@ -93,6 +137,8 @@ void CheckField(int x, int y, char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], boo
         checkedFields[y][x] = true;
         if(field[y][x] == 'B') {
             checkedFields[y][x] = false;
+            // game over
+            gameStatus = 3;
         } else if(field[y][x] == '0') {
             for(int i = 0;i<3;i++) {
                 for(int j = 0;j<3;j++) {
@@ -114,47 +160,45 @@ void CheckField(int x, int y, char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], boo
 int main() {
     Vector2 mousePosition;
     Vector2 primaryGridPosition = {50, 100};
+    Vector2 primaryLeftPanelPosition = {primaryGridPosition.x + MINEFIELD_WIDTH * CELL_SIZE + 30, 100};
     Vector2 selectedField;
-    bool started = false;
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "MINESWEEPER");
     
     // loading assets
     font = LoadFontEx("assets/fonts/Oswald-Bold.ttf", 64, 0, 0);
 
-    // loading content
-    Text title("MINESWEEPER", {WINDOW_WIDTH / 2, 0}, 80);
-
-    int bombCount = BOMB_COUNT;
-
+    Vector2 titlePosition = {WINDOW_WIDTH / 2 - MeasureTextEx(font, "MINESWEEPER", 80, 2).x / 2, 0};
     int x, y;
 
     PrepareFieldForGame(mineField, checkedFields);
-    while(!WindowShouldClose()) {
-
+    while(!WindowShouldClose() && gameRunning) {
         // mouse logic
         mousePosition = GetMousePosition();
         selectedField = {-1, -1};
-        if(mousePosition.x >= primaryGridPosition.x && mousePosition.y >= primaryGridPosition.y) {
-            if(mousePosition.x <= primaryGridPosition.x + CELL_SIZE * MINEFIELD_WIDTH && mousePosition.y <= primaryGridPosition.y + CELL_SIZE * MINEFIELD_HEIGHT) {
-                selectedField = GetField(mousePosition, primaryGridPosition); 
-            }
-        }
-        if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            if(selectedField.x > -1) {
-                x = (int)selectedField.x;
-                y = (int)selectedField.y;
-                if(!started) {
-                    // setting all bombs
-                    PlantBombs(mineField, bombCount, selectedField);
-                    started = true;
+        if(gameStatus == 1) {
+            if(mousePosition.x >= primaryGridPosition.x && mousePosition.y >= primaryGridPosition.y) {
+                if(mousePosition.x <= primaryGridPosition.x + CELL_SIZE * MINEFIELD_WIDTH && mousePosition.y <= primaryGridPosition.y + CELL_SIZE * MINEFIELD_HEIGHT) {
+                    selectedField = GetField(mousePosition, primaryGridPosition); 
                 }
-                CheckField(x, y, mineField, checkedFields);
             }
-        }
+            if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                if(selectedField.x > -1) {
+                    x = (int)selectedField.x;
+                    y = (int)selectedField.y;
+                    if(!started) {
+                        // setting all bombs
+                        PlantBombs(mineField, x, y);
+                        started = true;
+                    }
+                    CheckField(x, y, mineField, checkedFields);
+                }
+            }
+        } 
         BeginDrawing();
         ClearBackground(RAYWHITE);
-        title.DrawCentered();
+        DrawTextEx(font, "MINESWEEPER", titlePosition, 80, 2, BLACK);
         DrawBoard(mineField, checkedFields, primaryGridPosition, selectedField);
+        DrawGamePanel(primaryLeftPanelPosition, mousePosition);
         EndDrawing();
     }
     CloseWindow();
