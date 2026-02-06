@@ -55,11 +55,17 @@ void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields
                     DrawTextEx(font, temp.c_str(), {CELL_SIZE * j + primaryPosition.x + 10, CELL_SIZE * i + primaryPosition.y}, 45, 2, BLACK);
                 }
             }
+            // drawing marked places
             if(markFields[i][j]) {
                 DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, ORANGE);
             }
+            // drawing final bombs places (win/lose)
             if(gameStatus != 1 && field[i][j] == 'B') {
-                DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, RED);
+                if(gameStatus == 2) {
+                    DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, GREEN);
+                } else {
+                    DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, RED);
+                }
             }
             DrawRectangleLines(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, BLACK);
         }
@@ -91,6 +97,19 @@ void DrawGamePanel(Vector2 primaryPosition, Vector2 mousePosition) {
         }
         DrawRectangleLinesEx(retryButtonRect, 4, BLACK);
         DrawTextEx(font, "RETRY", (Vector2){retryButtonRect.x + 60, retryButtonRect.y}, 50, 2, BLACK);
+        // exit button
+        if(CheckCollisionPointRec(mousePosition, exitButtonRect)) {
+            DrawRectangle(exitButtonRect.x, exitButtonRect.y, exitButtonRect.width, exitButtonRect.height, LIGHTGRAY);
+            if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                gameRunning = false;
+            }
+        }
+        DrawRectangleLinesEx(exitButtonRect, 4, BLACK);
+        DrawTextEx(font, "EXIT", (Vector2){exitButtonRect.x + 70, exitButtonRect.y}, 50, 2, BLACK);
+    } else {
+        exitButtonRect = {primaryPosition.x, primaryPosition.y + 200, 200, 50};
+        DrawTextEx(font, ("Marks left:" + std::to_string(marksCount)).c_str(), (Vector2){primaryPosition.x, primaryPosition.y + 80}, 50, 2, BLACK);
+        DrawTextEx(font, ("Bombs:" + std::to_string(BOMBS_COUNT)).c_str(), (Vector2){primaryPosition.x, primaryPosition.y + 140}, 50, 2, BLACK);
         // exit button
         if(CheckCollisionPointRec(mousePosition, exitButtonRect)) {
             DrawRectangle(exitButtonRect.x, exitButtonRect.y, exitButtonRect.width, exitButtonRect.height, LIGHTGRAY);
@@ -170,12 +189,26 @@ void MarkField(int x, int y) {
     if(!checkedFields[y][x]) {
         if(markFields[y][x]) {
             markFields[y][x] = false;
-            marksCount--;
+            marksCount++;
         } else if(marksCount > 0) {
             markFields[y][x] = true;
-            marksCount++;
+            marksCount--;
         }
     }
+}
+
+bool CheckWin() {
+    for(int i = 0;i<MINEFIELD_HEIGHT;i++) {
+        for(int j = 0;j<MINEFIELD_WIDTH;j++) {
+            if(mineField[i][j] == 'B') {
+                continue;
+            }
+            if(!checkedFields[i][j]) {
+                return false;
+            }
+        }
+    }
+    return true;
 }
 
 
@@ -186,6 +219,7 @@ int main() {
     Vector2 primaryLeftPanelPosition = {primaryGridPosition.x + MINEFIELD_WIDTH * CELL_SIZE + 30, 100};
     Vector2 selectedField;
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "MINESWEEPER");
+    SetTargetFPS(60);
     
     // loading assets
     font = LoadFontEx("assets/fonts/Oswald-Bold.ttf", 64, 0, 0);
@@ -214,8 +248,10 @@ int main() {
                             PlantBombs(mineField, x, y);
                             started = true;
                         }
-                        
                         CheckField(x, y, mineField, checkedFields);
+                        if(CheckWin()) {
+                            gameStatus = 2;
+                        }
                     }
                 }
             }
