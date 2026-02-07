@@ -29,20 +29,20 @@ Rectangle exitButtonRect;
 Rectangle retryButtonRect;
 Font font;
 
-void PrepareFieldForGame(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedField[MINEFIELD_HEIGHT][MINEFIELD_WIDTH]) {
+void PrepareFieldForGame() {
     started = false;
     gameStatus = 1;
     marksCount = BOMBS_COUNT;
     for(int i = 0;i<MINEFIELD_HEIGHT;i++) {
         for(int j = 0;j<MINEFIELD_WIDTH;j++) {
-            field[i][j] = '0';
-            checkedField[i][j] = false;
+            mineField[i][j] = '0';
+            checkedFields[i][j] = false;
             markFields[i][j] = false;
         }
     }
 }
 
-void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], Vector2 primaryPosition, Vector2 selectedField) {
+void DrawBoard(Vector2 primaryPosition, Vector2 selectedField) {
     for(int i = 0;i<MINEFIELD_HEIGHT;i++) {
         for(int j = 0;j<MINEFIELD_WIDTH;j++) {
             if((int)selectedField.x == j && (int)selectedField.y == i) {
@@ -50,8 +50,8 @@ void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields
             }
             if(checkedFields[i][j]) {
                 DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, LIGHTGRAY);
-                if(field[i][j] >= '1' && field[i][j] != 'B') {
-                    std::string temp(1, field[i][j]);
+                if(mineField[i][j] >= '1' && mineField[i][j] != 'B') {
+                    std::string temp(1, mineField[i][j]);
                     DrawTextEx(font, temp.c_str(), {CELL_SIZE * j + primaryPosition.x + 10, CELL_SIZE * i + primaryPosition.y}, 45, 2, BLACK);
                 }
             }
@@ -60,7 +60,7 @@ void DrawBoard(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields
                 DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, ORANGE);
             }
             // drawing final bombs places (win/lose)
-            if(gameStatus != 1 && field[i][j] == 'B') {
+            if(gameStatus != 1 && mineField[i][j] == 'B') {
                 if(gameStatus == 2) {
                     DrawRectangle(CELL_SIZE * j + primaryPosition.x, CELL_SIZE * i + primaryPosition.y, CELL_SIZE, CELL_SIZE, GREEN);
                 } else {
@@ -92,7 +92,7 @@ void DrawGamePanel(Vector2 primaryPosition, Vector2 mousePosition) {
         if(CheckCollisionPointRec(mousePosition, retryButtonRect)) {
             DrawRectangle(retryButtonRect.x, retryButtonRect.y, retryButtonRect.width, retryButtonRect.height, LIGHTGRAY);
             if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                PrepareFieldForGame(mineField, checkedFields);
+                PrepareFieldForGame();
             }
         }
         DrawRectangleLinesEx(retryButtonRect, 4, BLACK);
@@ -127,7 +127,7 @@ Vector2 GetField(Vector2 mousePosition, Vector2 primaryPosition) {
     return {(mousePosition.x - primaryPosition.x) / CELL_SIZE, (mousePosition.y - primaryPosition.y) / CELL_SIZE};
 }
 
-void PlantBombs(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], int selectedX, int selectedY) {
+void PlantBombs(int selectedX, int selectedY) {
     srand(time(0));
 
     int bombs = BOMBS_COUNT;
@@ -136,21 +136,21 @@ void PlantBombs(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], int selectedX, in
     while(bombs > 0) {
         bombX = (int)(rand() % MINEFIELD_WIDTH);
         bombY = (int)(rand() % MINEFIELD_HEIGHT);
-        if(field[bombY][bombX] == 'B') {
+        if(mineField[bombY][bombX] == 'B') {
             continue;
         }
         if(std::abs(bombX - selectedX) < 3 && std::abs(bombY - selectedY) < 3) {
             continue;
         }
         // place bomb
-        field[bombY][bombX] = 'B';
+        mineField[bombY][bombX] = 'B';
         for(int i = 0;i<3;i++) {
             for(int j = 0;j<3;j++) {
                 if(bombY + i - 1 < 0 || bombX + j - 1 < 0 || bombY + i - 1 >= MINEFIELD_HEIGHT || bombX + j - 1 >= MINEFIELD_WIDTH) {
                     continue;
                 }
-                if(field[bombY + i - 1][bombX + j - 1] != 'B') {
-                    field[bombY + i - 1][bombX + j - 1] += 1;
+                if(mineField[bombY + i - 1][bombX + j - 1] != 'B') {
+                    mineField[bombY + i - 1][bombX + j - 1] += 1;
                 }
             }
         }
@@ -158,18 +158,18 @@ void PlantBombs(char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], int selectedX, in
     }
 }
 
-void CheckField(int x, int y, char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], bool checkedFields[MINEFIELD_HEIGHT][MINEFIELD_WIDTH]) {
+void CheckField(int x, int y) {
     if(markFields[y][x]) {
         markFields[y][x] = false;
         marksCount++;
     }
     if(!checkedFields[y][x] && !markFields[y][x]) {
         checkedFields[y][x] = true;
-        if(field[y][x] == 'B') {
+        if(mineField[y][x] == 'B') {
             checkedFields[y][x] = false;
             // game over
             gameStatus = 3;
-        } else if(field[y][x] == '0') {
+        } else if(mineField[y][x] == '0') {
             for(int i = 0;i<3;i++) {
                 for(int j = 0;j<3;j++) {
                     if(y + i - 1 < 0 || x + j - 1 < 0 || y + i - 1 >= MINEFIELD_HEIGHT || x + j - 1 >= MINEFIELD_WIDTH) {
@@ -178,7 +178,7 @@ void CheckField(int x, int y, char field[MINEFIELD_HEIGHT][MINEFIELD_WIDTH], boo
                     if(i == 1 && j == 1) {
                         continue;
                     }
-                    CheckField(x + j - 1, y + i - 1, field, checkedFields);
+                    CheckField(x + j - 1, y + i - 1);
                 }
             }
         }
@@ -227,7 +227,7 @@ int main() {
     Vector2 titlePosition = {WINDOW_WIDTH / 2 - MeasureTextEx(font, "MINESWEEPER", 80, 2).x / 2, 0};
     int x, y;
 
-    PrepareFieldForGame(mineField, checkedFields);
+    PrepareFieldForGame();
     while(!WindowShouldClose() && gameRunning) {
         // mouse logic
         mousePosition = GetMousePosition();
@@ -245,10 +245,10 @@ int main() {
                     if(!markFields[y][x]) {
                         if(!started) {
                             // setting all bombs
-                            PlantBombs(mineField, x, y);
+                            PlantBombs(x, y);
                             started = true;
                         }
-                        CheckField(x, y, mineField, checkedFields);
+                        CheckField(x, y);
                         if(CheckWin()) {
                             gameStatus = 2;
                         }
@@ -266,7 +266,7 @@ int main() {
         BeginDrawing();
         ClearBackground(RAYWHITE);
         DrawTextEx(font, "MINESWEEPER", titlePosition, 80, 2, BLACK);
-        DrawBoard(mineField, checkedFields, primaryGridPosition, selectedField);
+        DrawBoard(primaryGridPosition, selectedField);
         DrawGamePanel(primaryLeftPanelPosition, mousePosition);
         EndDrawing();
     }
