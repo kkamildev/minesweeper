@@ -219,9 +219,13 @@ int main() {
     Vector2 primaryLeftPanelPosition = {primaryGridPosition.x + MINEFIELD_WIDTH * CELL_SIZE + 30, 100};
     Vector2 selectedField;
     InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "MINESWEEPER");
+
     SetTargetFPS(60);
     
     // loading assets
+    Image icon = LoadImage("assets/icon.png");
+    SetWindowIcon(icon);
+    UnloadImage(icon);
     font = LoadFontEx("assets/fonts/Oswald-Bold.ttf", 64, 0, 0);
 
     Vector2 titlePosition = {WINDOW_WIDTH / 2 - MeasureTextEx(font, "MINESWEEPER", 80, 2).x / 2, 0};
