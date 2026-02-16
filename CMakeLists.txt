@@ -24,6 +24,14 @@ add_custom_target(copy_assets ALL
         ${CMAKE_CURRENT_BINARY_DIR}/assets
 )
 
+if (MINGW)
+    target_link_options(${PROJECT_NAME} PRIVATE
+        -static
+        -static-libgcc
+        -static-libstdc++
+    )
+endif()
+
 
 if(UNIX AND NOT APPLE)
     target_link_libraries(minesweeper m pthread dl rt X11)
